@@ -5,7 +5,9 @@ const {Booking}=require('../models');
 const CrudRepository=require('./crud-repository');
 const AppError = require('../utils/errors/app-errors');
 const { transport } = require('winston');
-
+const {Op}=require('sequelize');
+const {Enums}=require('../utils/common');
+const {CANCELLED,BOOKED}=Enums.BOOKING_STATUS;
 class BookingRespository extends CrudRepository{
     constructor(){
         super(Booking);
@@ -32,6 +34,31 @@ class BookingRespository extends CrudRepository{
         },{transaction:transaction})
         return response;
     }
+
+    async cancelOldBookings(timestamp){
+        const response= await Booking.update({status:CANCELLED},{
+            where:{
+                [Op.and]:[
+                  {  createdAt:{
+                        [Op.lt]:timestamp
+    
+                    }
+                },{
+                    status :{
+                        [Op.ne]:BOOKED
+                    }
+                },{
+                    status:{
+                        [Op.ne]:CANCELLED
+                    }
+                }
+                ]
+               
+            }
+        }) ;
+        return response;
+    }
 }
+
 
 module.exports=BookingRespository;
