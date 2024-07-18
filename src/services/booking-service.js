@@ -5,7 +5,8 @@ const { ServerConfig}=require('../config');
 const AppError = require('../utils/errors/app-errors');
 const {StatusCodes}=require("http-status-codes")
 // const AppError=require('../utils/errors/app-errors');
-const {Enums}=require('../utils/common')
+const {Enums}=require('../utils/common');
+const { data } = require('../utils/common/error-response');
 const bookingRepository=new BookingRepository();
 const {BOOKED,CANCELLED}=Enums.BOOKING_STATUS;
 async function createBooking(data){
@@ -53,8 +54,8 @@ await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId
         const currentTime=new Date();
 
         if(currentTime-bookingTime>300000){
-     await bookingRepository.update(data.bookingId,{status:CANCELLED},transaction);
-
+    //  await bookingRepository.update(data.bookingId,{status:CANCELLED},transaction);
+        await cancelBooking(data.bookingId);
             throw new AppError('The booking has expired',StatusCodes.BAD_REQUEST);
         }
         if(bookingDetails.totalCost!=data.totalCost){
@@ -75,6 +76,29 @@ await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId
     }
 
  }
+
+async function cancelBooking(bookingId){
+    const transaction=await db.sequelize.transaction();
+    try{
+        const bookingDetails=await bookingRepository.get(bookingId,transaction);
+        // console.log(0)
+        console.log(bookingDetails);
+
+        if(bookingDetails.status==CANCELLED){
+            await transaction.commit();
+            return true;
+        }
+        await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${bookingDetails.flightId}/seats`,{
+            seats:bookingDetails.noofSeats,
+            dec:0
+        });
+        await bookingRepository.update(bookingId,{status:CANCELLED},transaction);
+        await transaction.commit();
+    } catch(error){
+        await transaction.rollback();
+        throw error;
+    }
+}
 
 module.exports={
 createBooking
