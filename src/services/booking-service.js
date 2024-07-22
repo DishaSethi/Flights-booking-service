@@ -4,9 +4,10 @@ const db=require("../models");
 const { ServerConfig}=require('../config');
 const AppError = require('../utils/errors/app-errors');
 const {StatusCodes}=require("http-status-codes")
+
 // const AppError=require('../utils/errors/app-errors');
 const {Enums}=require('../utils/common');
-const { data } = require('../utils/common/error-response');
+const { data, message } = require('../utils/common/error-response');
 const bookingRepository=new BookingRepository();
 const {BOOKED,CANCELLED}=Enums.BOOKING_STATUS;
 async function createBooking(data){
@@ -42,6 +43,8 @@ await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId
  }
 
  async function makePayment(data){
+  
+    
     const transaction=await db.sequelize.transaction();
     try {
         const bookingDetails=await bookingRepository.get(data.bookingId,transaction);
